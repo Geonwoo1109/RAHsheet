@@ -1,11 +1,11 @@
 const bot = BotManager.getCurrentBot();
 
-const webappurl = "https://script.google.com/macros/s/AKfycbw2nBaXmUhPHiSHmanmOtR41ROdzB0sEk9-bA6ygwN27Y6nDecGoiTxQ38ZIOm_0tmjew/exec";
+const webappurl = "https://script.google.com/macros/s/AKfycbxqyiX0HscbTLT4WuxSvXNXQqZm56lfx-Xhuu7V_PxTgx5pZOIgJukr3_eUFB1nBEYXlQ/exec";
 
 const sheetName = "2025 2학기 시간표";
 
-// const webappurl = "https://script.google.com/macros/s/AKfycbz3s2jUWCqfJEu5ZMH7i56wgHbXHTyBpokRS6EMzVDPThbxCOlQWf2OQKMxT3HNb_3LiA/exec";
-
+// input: "9/11 (목) 13-15시 다목적 신청 부탁드립니다!"
+// output: ["9/11(목)","13-15","다목적"]
 function divideMsg(str) {
 
     // 1. 숫자가 처음 나오는 위치 찾기
@@ -22,7 +22,7 @@ function divideMsg(str) {
     // 3. 정규식 매칭 (날짜(요일) / 시간 / 장소)
     const regex = /^(\d{1,2}\/\d{1,2}\(([월화수목금토일])\))(\d{1,2})-(\d{1,2})(다목적|마루|방음|매트)$/;
     const match = trimmed.match(regex);
-    if (!match) return null; // 예외 1: 양식 불일치
+    if (!match) return "001"; // 예외 1: 양식 불일치
 
     // 여기까지 오면 형식은 올바르다고 가정
     const fullDateStr = match[1];   // ex) "9/6(토)"
@@ -34,7 +34,7 @@ function divideMsg(str) {
     // 4. 시간 유효성 검사 (예외 4. 12-15시)
     if (
         isNaN(startHour) || isNaN(endHour)
-        || startHour < 9 || endHour > 24 || startHour >= endHour ) return null; // return "시간형식불일치";
+        || startHour < 9 || endHour > 24 || startHour >= endHour ) return "002"; // 시간형식불일치
 
     // 5. 날짜 처리
     const today = new Date();
@@ -54,19 +54,20 @@ function divideMsg(str) {
     // 6. 날짜 범위 검사 (예외 2: 4주 이내)
     const fourWeeksLater = new Date(today);
     fourWeeksLater.setDate(today.getDate() + 7 * 4);
-    if (candidateDate < today || candidateDate > fourWeeksLater) return null;// ;"과거or4주뒤"
+    if (candidateDate < today || candidateDate > fourWeeksLater) return "003"; // 과거or4주뒤
 
     // 7. 요일 검사 (예외 3)
     const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
     const realWeekday = weekdays[candidateDate.getDay()];
-    if (realWeekday !== weekdayStr) return null;// "날짜와 요일 불일치";
+    if (realWeekday !== weekdayStr) return "004";// "날짜와 요일 불일치";
 
     // 모든 조건 통과 → 배열 반환
     return [`${month}/${day}(${weekdayStr})`, `${startHour}-${endHour}`, room];
 }
 
-
-function getCellRange(input, todayStr = "9/3") {
+// input: ["9/11(목)","13-15","다목적"]
+// output: "E26:E27"
+function getCellRange(input, todayStr) {
   const [dateStr, timeStr, roomStr] = input;
 
   // ------------------------
@@ -124,6 +125,7 @@ function getCellRange(input, todayStr = "9/3") {
   return `${startCol}${startRow}:${startCol}${endRow}`;
 }
 
+// read sheet -> 배열 형태로 반환
 function read(range) {
     // Jsoup execute()를 쓰면 body를 문자열로 뽑기 쉬움
     var url = webappurl + "?sheet=" + encodeURIComponent(sheetName) + "&range=" + range;
@@ -134,71 +136,148 @@ function read(range) {
     if (data.ok) {
         // 2차원 배열 -> 보기 좋게 문자열로
         // var lines = data.values.map(row => row.join(" | ")).join("\n");
-        return ("[조회 결과]\n" + data.values);
+        if (data.values.join("") == "") return "nothing: 신청 가능";
+        return (data.values);
     } else {
         return ("에러: " + data.error);
     }
 
 }
 
-function onMessage(msg) { try {
+// 마지막 행 아래에 추가하는 기능이라 잘 안쓸듯?
+function append() {
+    var payload = {
+        sheet: "Sheet1",
+        mode: "append",
+        values: ["이름", "점수"],
+        backgrounds: ["#d9ead3", "#cfe2f3"], // A열-연두, B열-하늘
+        fontColors: ["#000000", "#ff0000"], // A열-검정, B열-빨강
+        bold: true
+    };
+}
 
-    const placesList = ["다목적", "마루", "방음", "매트"];
-    if (msg.room == "김건우" && placesList.some(placesList => msg.content.includes(placesList))) {
-        // msg.reply("test");
+// 시트에 반영하는 부분
+function write(cellRange, cellValue, cellColor) {
+    var payload = {
+        sheet: sheetName,
+        mode: "update",
+        range: cellRange,
+        values: makeArray(cellValue, cellRange),
+        backgrounds: makeArray(cellColor, cellRange),
+        fontColors: makeArray("#000000", cellRange),
+        bold: false
+    };
 
-        var input = msg.content.split("\n");
-        var output = [];
+    var res = org.jsoup.Jsoup
+        .connect(webappurl)
+        .header("Content-Type", "application/json")
+        .requestBody(JSON.stringify(payload))
+        .ignoreContentType(true)
+        .method(org.jsoup.Connection.Method.POST)
+        .execute();
 
-        for (i=0; i<input.length; i++) {
-            var temp_msg = divideMsg(input[i]);
-            if (temp_msg != null) {
-                var temp_cell = getCellRange(temp_msg);
-                output.push(temp_msg + " -> " + temp_cell);
+    var data = JSON.parse(res.body());
+    return (data.ok ? "추가 성공!" : "실패: " + data.error);
+}
 
-                msg.reply(read(temp_cell));
-            }
+// input: ("aaa", "B4:C6")
+// output: [["aaa","aaa"],["aaa","aaa"],["aaa","aaa"]]
+function makeArray(str, range) {
+    // 열 문자(A~Z...)를 숫자로 변환하는 헬퍼 함수
+    function colToNumber(col) {
+        let num = 0;
+        for (let i = 0; i < col.length; i++) {
+        num = num * 26 + (col.charCodeAt(i) - 64); // 'A' → 1
         }
-        msg.reply(output.join("\n"));
-        
+        return num;
     }
+
+    // 셀 주소("B4") → {col: number, row: number}
+    function parseCell(cell) {
+        const match = cell.match(/([A-Z]+)([0-9]+)/);
+        return {
+        col: colToNumber(match[1]),
+        row: parseInt(match[2], 10)
+        };
+    }
+
+    // 범위 분리 ("B4:C6")
+    const [startCell, endCell] = range.split(":");
+    const start = parseCell(startCell);
+    const end = parseCell(endCell);
+
+    const numRows = end.row - start.row + 1;
+    const numCols = end.col - start.col + 1;
+
+    // 2차원 배열 생성
+    const result = Array.from({ length: numRows }, () =>
+        Array.from({ length: numCols }, () => str)
+    );
+
+    return result;
+}
+
+// 현재 날짜 반환 
+// output: "11/9"
+function getDate() {
+    const today = new Date();
+    const month = today.getMonth() + 1; // 월은 0부터 시작하므로 +1
+    const day = today.getDate();
+
+    return `${month}/${day}`;
+}
+
+function onMessage(msg) {
+    try {
+
+        const placesList = ["다목적", "마루", "방음", "매트"];
+        if (msg.room == "김건우" && !msg.content.includes("취소")
+            && placesList.some(placesList => msg.content.includes(placesList))) {
+            // msg.reply("test");
+
+            var input = msg.content.split("\n");
+            var output = {
+                "다목적": [],
+                "마루": [],
+                "방음": [],
+                "매트": [],
+                "미확인": []
+            };
+
+            const errors = ["001", "002", "003", "004"];
+            for (i=0; i<input.length; i++) {
+                var temp_msg = divideMsg(input[i]);
+                if (temp_msg != null) {
+                    if (errors.includes(temp_msg)) {
+                        output["미확인"].push(input[i] + " -> " + temp_msg);
+
+                        //msg.reply(read(temp_cell));
+                    } else {
+                        var temp_cell = getCellRange(temp_msg, getDate());
+                        output[temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + read(temp_cell) + ")");
+                    }
+                }
+            }
+            msg.reply(JSON.stringify(output, null, 4));
+            
+        }
+        
+        if (msg.room == "김건우" && msg.content == "hi") {
+            
+            msg.reply("hi");
+
+            var a = {};
+
+            // msg.reply(makeArray("김건우 신청", "B3:C6"));
+
+
+            // msg.reply(write("B4:B6", "김건우 신청", "#ffff00"));
     
-    if (msg.room == "김건우" && msg.content == "hi") {
-        
-        msg.reply("hi");
-        
-        /*
-        if (true) {
-              const payload = {
-                    sheet: sheetName,
-                    mode: "append",
-                    values: ["항목1","항목2","123"]
-                };
 
-                var res = org.jsoup.Jsoup
-                    .connect(webappurl)
-                    .header("Content-Type", "application/json")
-                    .requestBody(JSON.stringify(payload))
-                    .ignoreContentType(true)
-                    .method(org.jsoup.Connection.Method.POST)
-                    .execute();
-
-                var data = JSON.parse(res.body());
-                msg.reply(data.ok ? "추가 성공!" : "실패: " + data.error);
+                msg.reply("bye");
         }
 
 
-        */
- 
-        
-
-
-        
-        
-
-
-            msg.reply("bye");
-        }
     } catch(e) {
         msg.reply(e.lineNumber + "\n" + e);
     }
@@ -209,3 +288,4 @@ function onMessage(msg) { try {
 bot.addListener(Event.MESSAGE, onMessage);
 
 
+[["aaa", "aaa"], ["aaa", "aaa"], ["aaa", "aaa"]]
