@@ -1,3 +1,3 @@
 # RAHsheet
-2025 개인 프로젝트. RAH 연습실 신청 자동화 챗봇 제작
-google sheet API 활용
+1. 2025 개인 프로젝트. RAH 연습실 신청 자동화 챗봇 제작
+2. google sheet API 활용
