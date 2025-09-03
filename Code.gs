@@ -52,31 +52,6 @@ function doPost(e) {
     if (!sheet) throw new Error("시트 없음: " + sheetName);
 
     if (data.mode === 'append') {
-      sheet.appendRow(data.values);
-      return jsonOut({ok:true, sheet:sheetName});
-    } else if (data.mode === 'update') {
-      const rng = sheet.getRange(data.range);
-      rng.setValues(data.values);
-      return jsonOut({ok:true, sheet:sheetName});
-    } else {
-      return jsonOut({ok:false, error:"unknown mode"});
-    }
-  } catch (err) {
-    return jsonOut({ok:false, error:String(err)});
-  }
-}
-
-// POST: body = {sheet:"Sheet2", mode:"append", values:["a","b"]}
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents || '{}');
-    const sheetName = data.sheet || 'Sheet1';
-
-    const ss = SpreadsheetApp.openById(SHEET_ID);
-    const sheet = ss.getSheetByName(sheetName);
-    if (!sheet) throw new Error("시트 없음: " + sheetName);
-
-    if (data.mode === 'append') {
       // appendRow는 Range를 반환하지 않으므로, 마지막 행 Range를 가져와 스타일 지정
       sheet.appendRow(data.values);
       const lastRow = sheet.getLastRow();
@@ -109,7 +84,18 @@ function doPost(e) {
       }
 
       return jsonOut({ok:true, sheet:sheetName});
-    } 
+    }
+    else if (data.mode == "mergeWrite") {
+      const range = sheet.getRange(data.range);
+      if (data.backgrounds) {
+        range.setBackgrounds(data.backgrounds);
+      }
+      range.getCell(1,1).setValue(data.value);    // 값 입력 (대표칸)
+      range.merge();
+
+      
+      return jsonOut({ok:true, sheet:sheetName, action:"mergeWrite"});
+    }
     else {
       return jsonOut({ok:false, error:"unknown mode"});
     }
