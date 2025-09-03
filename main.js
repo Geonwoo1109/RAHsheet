@@ -1,6 +1,6 @@
 const bot = BotManager.getCurrentBot();
 
-const webappurl = "https://script.google.com/macros/s/AKfycbxqyiX0HscbTLT4WuxSvXNXQqZm56lfx-Xhuu7V_PxTgx5pZOIgJukr3_eUFB1nBEYXlQ/exec";
+const webappurl = "https://script.google.com/macros/s/AKfycbzLQy7INWBz1ZQU1rKN8EosGZAWoA6Xu-bq3QKga1LheLCdIlQlKCsSMLI2BGh-qH4/exec";
 
 const sheetName = "2025 2학기 시간표";
 
@@ -14,10 +14,11 @@ function divideMsg(str) {
     else str = str.slice(firstDigitIndex);
 
     // 1. 공백 및 쓸데없는거 제거
-    const noSpace = str.replace(/(\s+)|(시)|(연습실)/g, "");
+    const noSpace = str.replace(/(\s+)|(시)|(요일)|(연습실)/g, "");
+    const changeBar = noSpace.replace(/(~)/g, "-");
 
     // 2. "장소" 이후 문자열 제거
-    const trimmed = noSpace.replace(/(다목적|마루|방음|매트).*$/, "$1");
+    const trimmed = changeBar.replace(/(다목적|마루|방음|매트).*$/, "$1");
     
     // 3. 정규식 매칭 (날짜(요일) / 시간 / 장소)
     const regex = /^(\d{1,2}\/\d{1,2}\(([월화수목금토일])\))(\d{1,2})-(\d{1,2})(다목적|마루|방음|매트)$/;
@@ -25,11 +26,11 @@ function divideMsg(str) {
     if (!match) return "001"; // 예외 1: 양식 불일치
 
     // 여기까지 오면 형식은 올바르다고 가정
-    const fullDateStr = match[1];   // ex) "9/6(토)"
-    const weekdayStr = match[2];    // ex) "토"
-    const startHour = parseInt(match[3], 10);
-    const endHour = parseInt(match[4], 10);
-    const room = match[5];
+    const fullDateStr = `${match[1]}(${match[2]})`;     // ex) "9/6(토)"
+    const weekdayStr = match[2];                        // ex) "토"
+    const startHour = parseInt(match[3], 10);           // ex) 10
+    const endHour = parseInt(match[4], 10);             // ex) 15
+    const room = match[5];                              // ex) "마루"
 
     // 4. 시간 유효성 검사 (예외 4. 12-15시)
     if (
@@ -125,7 +126,7 @@ function getCellRange(input, todayStr) {
   return `${startCol}${startRow}:${startCol}${endRow}`;
 }
 
-// read sheet -> 배열 형태로 반환
+// read sheet -> 배열 형태로 반환 (병합된것도 읽기)
 function read(range) {
     // Jsoup execute()를 쓰면 body를 문자열로 뽑기 쉬움
     var url = webappurl + "?sheet=" + encodeURIComponent(sheetName) + "&range=" + range;
@@ -136,7 +137,7 @@ function read(range) {
     if (data.ok) {
         // 2차원 배열 -> 보기 좋게 문자열로
         // var lines = data.values.map(row => row.join(" | ")).join("\n");
-        if (data.values.join("") == "") return "nothing: 신청 가능";
+        if (data.values.join("") == "") return "신청 가능";
         return (data.values);
     } else {
         return ("에러: " + data.error);
@@ -166,6 +167,28 @@ function write(cellRange, cellValue, cellColor) {
         backgrounds: makeArray(cellColor, cellRange),
         fontColors: makeArray("#000000", cellRange),
         bold: false
+    };
+
+    var res = org.jsoup.Jsoup
+        .connect(webappurl)
+        .header("Content-Type", "application/json")
+        .requestBody(JSON.stringify(payload))
+        .ignoreContentType(true)
+        .method(org.jsoup.Connection.Method.POST)
+        .execute();
+
+    var data = JSON.parse(res.body());
+    return (data.ok ? "추가 성공!" : "실패: " + data.error);
+}
+
+// 시트에 반영 2 (병합 모드)
+function mergeWrite(cellRange, cellValue, cellColor) {
+    var payload = {
+        sheet: sheetName,
+        mode: "mergeWrite",
+        range: cellRange,
+        value: cellValue,
+        backgrounds: makeArray(cellColor, cellRange)
     };
 
     var res = org.jsoup.Jsoup
@@ -217,6 +240,27 @@ function makeArray(str, range) {
     return result;
 }
 
+function makeKakaoMsg(array, requestor) {
+    if (array.length == 0) return null;
+
+    var result = [];
+    for (j=0; j<array.length; j++) {
+
+        var info = array[j].split(" ->")[0].split(",");
+        mergeWrite(getCellRange(info, getDate()), requestor + " 신청", "#ffff00");      // 시트에 반영하기
+        result.push(info[0] + " " + info[1] + " " + info[2] + "연습실")
+        
+    }
+    // return [result, no];
+    
+    if (result.length == 0) return null;
+    else {
+        result.push("라 신청합니다!");
+        return result.join("\n");
+    }
+    
+}
+
 // 현재 날짜 반환 
 // output: "11/9"
 function getDate() {
@@ -237,10 +281,18 @@ function onMessage(msg) {
 
             var input = msg.content.split("\n");
             var output = {
-                "다목적": [],
-                "마루": [],
-                "방음": [],
-                "매트": [],
+                "yes": {
+                    "다목적": [],
+                    "마루": [],
+                    "방음": [],
+                    "매트": []
+                },
+                "no": {
+                    "다목적": [],
+                    "마루": [],
+                    "방음": [],
+                    "매트": []
+                },
                 "미확인": []
             };
 
@@ -254,11 +306,45 @@ function onMessage(msg) {
                         //msg.reply(read(temp_cell));
                     } else {
                         var temp_cell = getCellRange(temp_msg, getDate());
-                        output[temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + read(temp_cell) + ")");
+                        var temp_value = read(temp_cell);
+                        if (temp_value == "신청 가능") {
+                            output["yes"][temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + temp_value + ")");
+                        } else {
+                            output["no"][temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + temp_value + ")");
+                        }
                     }
                 }
             }
             msg.reply(JSON.stringify(output, null, 4));
+/*
+            for (i=0; i<placesList.length; i++) {
+                var kakao = makeKakaoMsg(output[placesList[i]],  msg.author.name);
+                if (kakao == null) continue;
+                else {
+                    msg.reply(kakao);
+                }
+            }
+*/
+
+            // 불발 건이 하나도 없으면 -> 자동으로 신청하고 신청 완료 메시지 출력
+            var noCount = 0;
+            for (i=0; i<placesList.length; i++) {
+                noCount += output["no"][placesList[i]].length;
+            }
+            noCount += output["미확인"].length;
+
+            if (noCount == 0) {
+                for (i=0; i<placesList.length; i++) {
+                    var kakao = makeKakaoMsg(output["yes"][placesList[i]],  msg.author.name);
+                    if (kakao == null) continue;
+                    else {
+                        msg.reply(kakao);
+                    }
+                }
+                msg.reply("[자동] 신청해드렸습니다. 스프레드시트 확인 부탁드립니다 :>\n신청인: " + msg.author.name);
+            }
+
+            
             
         }
         
@@ -272,9 +358,10 @@ function onMessage(msg) {
 
 
             // msg.reply(write("B4:B6", "김건우 신청", "#ffff00"));
+            // msg.reply(mergeWrite("B7:B9", "김건우 신청2", "#ffff00"));
     
 
-                msg.reply("bye");
+            msg.reply("bye");
         }
 
 
