@@ -1,8 +1,16 @@
 const bot = BotManager.getCurrentBot();
 
-const webappurl = "https://script.google.com/macros/s/AKfycbzLQy7INWBz1ZQU1rKN8EosGZAWoA6Xu-bq3QKga1LheLCdIlQlKCsSMLI2BGh-qH4/exec";
+const webappurl = "https://script.google.com/macros/s/AKfycbybJSxXreteJqVQnctHtbrLZsivs4epMWiVbZGioV3cu88dd6NQHYmxf_2pSKz2cKwG/exec";
 
 const sheetName = "2025 2학기 시간표";
+
+var errorCode = {
+    "001": "예외 1: 양식 불일치",
+    "002": "예외 2: 시간 형식 불일치",
+    "003": "예외 3: 과거or4주뒤 날짜입니다.",
+    "004": "예외 4: 날짜와 요일 불일치",
+
+}
 
 // input: "9/11 (목) 13-15시 다목적 신청 부탁드립니다!"
 // output: ["9/11(목)","13-15","다목적"]
@@ -15,7 +23,7 @@ function divideMsg(str) {
 
     // 1. 공백 및 쓸데없는거 제거
     const noSpace = str.replace(/(\s+)|(시)|(요일)|(연습실)/g, "");
-    const changeBar = noSpace.replace(/(~)/g, "-");
+    const changeBar = noSpace.replace(/"~"/g, "-");
 
     // 2. "장소" 이후 문자열 제거
     const trimmed = changeBar.replace(/(다목적|마루|방음|매트).*$/, "$1");
@@ -26,11 +34,11 @@ function divideMsg(str) {
     if (!match) return "001"; // 예외 1: 양식 불일치
 
     // 여기까지 오면 형식은 올바르다고 가정
-    const fullDateStr = `${match[1]}(${match[2]})`;     // ex) "9/6(토)"
-    const weekdayStr = match[2];                        // ex) "토"
-    const startHour = parseInt(match[3], 10);           // ex) 10
-    const endHour = parseInt(match[4], 10);             // ex) 15
-    const room = match[5];                              // ex) "마루"
+    const fullDateStr = match[1];               // ex) "9/6(토)"
+    const weekdayStr = match[2];                // ex) "토"
+    const startHour = parseInt(match[3], 10);   // ex) 10
+    const endHour = parseInt(match[4], 10);     // ex) 15
+    const room = match[5];                      // ex) "마루"
 
     // 4. 시간 유효성 검사 (예외 4. 12-15시)
     if (
@@ -305,6 +313,7 @@ function onMessage(msg) {
 
                         //msg.reply(read(temp_cell));
                     } else {
+                        // msg.reply(temp_msg)
                         var temp_cell = getCellRange(temp_msg, getDate());
                         var temp_value = read(temp_cell);
                         if (temp_value == "신청 가능") {
