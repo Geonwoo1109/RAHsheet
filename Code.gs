@@ -67,11 +67,14 @@ function doPost(e) {
         range.setFontWeight("bold");
       }
 
+      range.setHorizontalAlignment("center");
+      range.setVerticalAlignment("middle");
+
       return jsonOut({ok:true, sheet:sheetName});
     } 
     else if (data.mode === 'update') {
-      const rng = sheet.getRange(data.range);
-      rng.setValues(data.values);
+      const range = sheet.getRange(data.range);
+      range.setValues(data.values);
 
       if (data.backgrounds) {
         rng.setBackgrounds(data.backgrounds);
@@ -83,6 +86,9 @@ function doPost(e) {
         rng.setFontWeight("bold");
       }
 
+      range.setHorizontalAlignment("center");
+      range.setVerticalAlignment("middle");
+
       return jsonOut({ok:true, sheet:sheetName});
     }
     else if (data.mode == "mergeWrite") {
@@ -92,7 +98,9 @@ function doPost(e) {
       }
       range.getCell(1,1).setValue(data.value);    // 값 입력 (대표칸)
       range.merge();
-
+      
+      range.setHorizontalAlignment("center");
+      range.setVerticalAlignment("middle");
       
       return jsonOut({ok:true, sheet:sheetName, action:"mergeWrite"});
     }
