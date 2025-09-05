@@ -1,15 +1,22 @@
 const bot = BotManager.getCurrentBot();
 
-const webappurl = "https://script.google.com/macros/s/AKfycbybJSxXreteJqVQnctHtbrLZsivs4epMWiVbZGioV3cu88dd6NQHYmxf_2pSKz2cKwG/exec";
+const webappurl = "https://script.google.com/macros/s/AKfycbztV58Jqn6ygDbnIkX0DmJgtZlsGAUH_f4MnYwl_MojIOiVIxIQvptuJnyyboPbM4dP/exec";
+
+const email = "geonwoo@concise-rampart-306610.iam.gserviceaccount.com";
 
 const sheetName = "2025 2학기 시간표";
+
+const adminRoomName = "💡RAH 연습실 자동화🤖 관리자방💡";
+const normalRoomName = "💡RAH 연습실 자동화🤖 관리자방💡";
+
+const roomLists = [adminRoomName, normalRoomName, "김건우"];
+const masterRoomLists = ["다목적연습실", "마루연습실", "방음연습실", "매트연습실"];
 
 var errorCode = {
     "001": "예외 1: 양식 불일치",
     "002": "예외 2: 시간 형식 불일치",
     "003": "예외 3: 과거or4주뒤 날짜입니다.",
-    "004": "예외 4: 날짜와 요일 불일치",
-
+    "004": "예외 4: 날짜와 요일 불일치"
 }
 
 // input: "9/11 (목) 13-15시 다목적 신청 부탁드립니다!"
@@ -22,16 +29,18 @@ function divideMsg(str) {
     else str = str.slice(firstDigitIndex);
 
     // 1. 공백 및 쓸데없는거 제거
-    const noSpace = str.replace(/(\s+)|(시)|(요일)|(연습실)/g, "");
-    const changeBar = noSpace.replace(/"~"/g, "-");
+    const noSpace = str.replace(/\s+|시|요일|연습실/g, "");
+
+    const changeBar = noSpace.replace(/~/g, "-");
 
     // 2. "장소" 이후 문자열 제거
-    const trimmed = changeBar.replace(/(다목적|마루|방음|매트).*$/, "$1");
-    
+    const trimmed = changeBar.replace(/(다목적|마루|방음|매트)[^ ]*/, "$1");
+
     // 3. 정규식 매칭 (날짜(요일) / 시간 / 장소)
     const regex = /^(\d{1,2}\/\d{1,2}\(([월화수목금토일])\))(\d{1,2})-(\d{1,2})(다목적|마루|방음|매트)$/;
     const match = trimmed.match(regex);
     if (!match) return "001"; // 예외 1: 양식 불일치
+
 
     // 여기까지 오면 형식은 올바르다고 가정
     const fullDateStr = match[1];               // ex) "9/6(토)"
@@ -254,7 +263,7 @@ function makeKakaoMsg(array, requestor) {
     var result = [];
     for (j=0; j<array.length; j++) {
 
-        var info = array[j].split(" ->")[0].split(",");
+        var info = array[j].replace("연습실", "").split(" ->")[0].split(" ");
         mergeWrite(getCellRange(info, getDate()), requestor + " 신청", "#ffff00");      // 시트에 반영하기
         result.push(info[0] + " " + info[1] + " " + info[2] + "연습실")
         
@@ -263,8 +272,7 @@ function makeKakaoMsg(array, requestor) {
     
     if (result.length == 0) return null;
     else {
-        result.push("라 신청합니다!");
-        return result.join("\n");
+        return result.join("\n") + " 라 신청합니다!";
     }
     
 }
@@ -279,16 +287,33 @@ function getDate() {
     return `${month}/${day}`;
 }
 
+function getDateFull() {
+    const now = new Date();
+
+    // 월, 일, 요일, 시, 분, 초 가져오기
+    const month = now.getMonth() + 1; // getMonth()는 0부터 시작하므로 1을 더해줍니다.
+    const date = now.getDate();
+    const day = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()]; // getDay()는 0(일요일)부터 6(토요일)까지의 값을 반환합니다.
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+
+    return `${month}/${date}(${day}) ${hours}:${minutes}`;
+}
+
 function onMessage(msg) {
     try {
 
+        
+
         const placesList = ["다목적", "마루", "방음", "매트"];
-        if (msg.room == "김건우" && !msg.content.includes("취소")
+        if (roomLists.includes(msg.room) && !msg.content.includes("취소")
             && placesList.some(placesList => msg.content.includes(placesList))) {
-            // msg.reply("test");
 
             var input = msg.content.split("\n");
             var output = {
+                "requester": msg.author.name,
+                "time": getDateFull(),
                 "yes": {
                     "다목적": [],
                     "마루": [],
@@ -306,25 +331,28 @@ function onMessage(msg) {
 
             const errors = ["001", "002", "003", "004"];
             for (i=0; i<input.length; i++) {
+
                 var temp_msg = divideMsg(input[i]);
+
                 if (temp_msg != null) {
                     if (errors.includes(temp_msg)) {
                         output["미확인"].push(input[i] + " -> " + temp_msg);
 
-                        //msg.reply(read(temp_cell));
                     } else {
-                        // msg.reply(temp_msg)
+                        
                         var temp_cell = getCellRange(temp_msg, getDate());
                         var temp_value = read(temp_cell);
+                        var forCopy = temp_msg[0] + " " + temp_msg[1] + " " + temp_msg[2] + "연습실";
+
                         if (temp_value == "신청 가능") {
-                            output["yes"][temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + temp_value + ")");
+                            output["yes"][temp_msg[2]].push(forCopy + " -> " + temp_cell + " (" + temp_value + ")");
                         } else {
-                            output["no"][temp_msg[2]].push(temp_msg + " -> " + temp_cell + " (" + temp_value + ")");
+                            output["no"][temp_msg[2]].push(forCopy + " -> " + temp_cell + " (" + temp_value + ")");
                         }
                     }
                 }
             }
-            msg.reply(JSON.stringify(output, null, 4));
+            bot.send(adminRoomName, JSON.stringify(output, null, 4));
 /*
             for (i=0; i<placesList.length; i++) {
                 var kakao = makeKakaoMsg(output[placesList[i]],  msg.author.name);
@@ -347,21 +375,30 @@ function onMessage(msg) {
                     var kakao = makeKakaoMsg(output["yes"][placesList[i]],  msg.author.name);
                     if (kakao == null) continue;
                     else {
-                        msg.reply(kakao);
+                        bot.send(masterRoomLists[i], kakao);
                     }
                 }
-                msg.reply("[자동] 신청해드렸습니다. 스프레드시트 확인 부탁드립니다 :>\n신청인: " + msg.author.name);
+
+                bot.send(msg.room, "[자동] 신청해드렸습니다. 스프레드시트 확인 부탁드립니다 :>\n신청인: " + msg.author.name);
             }
 
             
             
         }
         
-        if (msg.room == "김건우" && msg.content == "hi") {
+        if (msg.author.name == "김건우" && msg.content == "hi") {
             
             msg.reply("hi");
 
+            msg.reply(getDateFull());
+
             var a = {};
+
+            // var bot = BotManager.getCurrentBot();
+            // msg.reply("💡RAH 연습실 자동화🤖 관리자방💡", "hi room");
+            bot.send("김건우", "김건우 개인톡");
+            // bot.send("test", "hi room");
+            bot.send(adminRoomName, "관리자방 전용");
 
             // msg.reply(makeArray("김건우 신청", "B3:C6"));
 
@@ -375,13 +412,11 @@ function onMessage(msg) {
 
 
     } catch(e) {
-        msg.reply(e.lineNumber + "\n" + e);
+        // msg.reply(e.lineNumber + "\n" + e);
+        bot.send(adminRoomName, e.lineNumber + "\n" + e);
     }
 
 
 }
 
 bot.addListener(Event.MESSAGE, onMessage);
-
-
-[["aaa", "aaa"], ["aaa", "aaa"], ["aaa", "aaa"]]
