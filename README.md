@@ -15,6 +15,7 @@
 25.09.04 | 완성 1단계 v1.0.0 | 상하좌우 중앙정렬 성공 | 메신저봇에 오류가 너무 많아서 "0.7.36a"로 다운그레이드 \
 25.09.05 | 결국 39a 버전으로 돌아왔습니다. 관리자 채팅방 따로 만들어서 거기다가 개발자용 데이터 보내는거 성공 \
 25.09.06 | 지금 새벽인데, 아침에 해 뜨고 늦으면 배틀 다녀와서 내부적으로 1차 적용해볼 예정입니다. 그래도 이번 주 안에는 적용 할듯 \
+25.09.08 | 새벽 00:30 -> 드디어 본 카톡방에 적용 후 실사용 해봄! 공지 때렸습니다 ㅎㅎ 제발 무사했으면 좋겠다 \
 
 
 input: 
@@ -66,6 +67,6 @@ var errorCode = {
 ```
 
 <img width="4320" height="4320" alt="main 1@4x" src="https://github.com/user-attachments/assets/441241a1-cbba-403c-9a62-2518c8534f97" />
-<img width="4320" height="4320" alt="main 2@4x" src="https://github.com/user-attachments/assets/ffaf7386-bd70-440c-8e68-790e229a3d0e" />
+<img width="4320" height="4320" alt="main 2@4x" src="https://github.com/user-attachments/assets/48da9932-1ef7-4111-b93e-caf63d4b1d40" />
 
 
