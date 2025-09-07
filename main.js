@@ -7,7 +7,7 @@ const email = "geonwoo@concise-rampart-306610.iam.gserviceaccount.com";
 const sheetName = "2025 2학기 시간표";
 
 const adminRoomName = "💡RAH 연습실 자동화🤖 관리자방💡";
-const normalRoomName = "💡RAH 연습실 자동화🤖 관리자방💡";
+const normalRoomName = "💡연습실 사용 신청 단톡방💡";
 
 const roomLists = [adminRoomName, normalRoomName, "김건우"];
 const masterRoomLists = ["다목적연습실", "마루연습실", "방음연습실", "매트연습실"];
@@ -375,7 +375,7 @@ function onMessage(msg) {
                     var kakao = makeKakaoMsg(output["yes"][placesList[i]],  msg.author.name);
                     if (kakao == null) continue;
                     else {
-                        bot.send(masterRoomLists[i], kakao);
+                        bot.send(masterRoomLists[i], kakao);        // 각 관리자 톡방에 메시지 보내기
                     }
                 }
 
