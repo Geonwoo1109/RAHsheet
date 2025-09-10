@@ -370,7 +370,13 @@ function onMessage(msg) {
             }
             noCount += output["미확인"].length;
 
-            if (noCount == 0) {
+            // 그리고 신청 가능한 건이 하나 이상 있으면
+            var yesCount = 0;
+            for (i=0; i<placesList.length; i++) {
+                yesCount += output["yes"][placesList[i]].length;
+            }
+
+            if (yesCount != 0 && noCount == 0) {
                 for (i=0; i<placesList.length; i++) {
                     var kakao = makeKakaoMsg(output["yes"][placesList[i]],  msg.author.name);
                     if (kakao == null) continue;
@@ -387,26 +393,10 @@ function onMessage(msg) {
         }
         
         if (msg.author.name == "김건우" && msg.content == "hi") {
-            
             msg.reply("hi");
-
             msg.reply(getDateFull());
-
-            var a = {};
-
-            // var bot = BotManager.getCurrentBot();
-            // msg.reply("💡RAH 연습실 자동화🤖 관리자방💡", "hi room");
             bot.send("김건우", "김건우 개인톡");
-            // bot.send("test", "hi room");
             bot.send(adminRoomName, "관리자방 전용");
-
-            // msg.reply(makeArray("김건우 신청", "B3:C6"));
-
-
-            // msg.reply(write("B4:B6", "김건우 신청", "#ffff00"));
-            // msg.reply(mergeWrite("B7:B9", "김건우 신청2", "#ffff00"));
-    
-
             msg.reply("bye");
         }
 
