@@ -39,6 +39,9 @@ output: {"no": {"다목적": ["9/19(금) 16-18 다목적연습실 -> F29:F30 (RA
 ```
 -> RAH시간(우리 동아리 우선사용 시간대)에는 자동 신청이 안되는것을 볼 수 있음. 이에 대해서 RAH시간은 예외적으로 신청 해주는 코드 필요함 
 
+#### 25.10.14
+-> 현재일을 1일차로 보고, 28일차 까지만 신청 가능하도록 변경경
+
 # code Info
 ### input: 
 ```
@@ -91,6 +94,8 @@ var errorCode = {
 <div style="display: flex; gap: 10px;">
   <img width="300" alt="main 1@4x" src="https://github.com/user-attachments/assets/441241a1-cbba-403c-9a62-2518c8534f97" />
   <img width="300" alt="main 2@4x" src="https://github.com/user-attachments/assets/48da9932-1ef7-4111-b93e-caf63d4b1d40" />
+  <img width="300" alt="main 2 사본 2@4x" src="https://github.com/user-attachments/assets/1247993d-d11f-4c0b-8b8e-d87645fdea58" />
 </div>
+
 
 
