@@ -71,7 +71,7 @@ function divideMsg(str) {
 
     // 6. 날짜 범위 검사 (예외 2: 4주 이내)
     const fourWeeksLater = new Date(today);
-    fourWeeksLater.setDate(today.getDate() + 7 * 4);
+    fourWeeksLater.setDate(today.getDate() + (7*4 - 1));    // 현재를 1일차라고 보고, 28일차까지만 신청받기
     if (candidateDate < today || candidateDate > fourWeeksLater) return "003"; // 과거or4주뒤
 
     // 7. 요일 검사 (예외 3)
