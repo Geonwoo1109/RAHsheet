@@ -154,6 +154,8 @@ function read(range) {
     if (data.ok) {
         // 2차원 배열 -> 보기 좋게 문자열로
         // var lines = data.values.map(row => row.join(" | ")).join("\n");
+        // msg.reply(data.values);
+        for (i=0; i<data.values.length; i++) if (data.values[i] == "RAH") data.values[i] = "";
         if (data.values.join("") == "") return "신청 가능";
         return (data.values);
     } else {
