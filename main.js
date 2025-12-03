@@ -313,6 +313,7 @@ function onMessage(msg) {
             && placesList.some(placesList => msg.content.includes(placesList))) {
 
             var input = msg.content.split("\n");
+            // msg.reply("input: " + input + "\nlength: " + (input.length+10));
             var output = {
                 "requester": msg.author.name,
                 "time": getDateFull(),
@@ -332,13 +333,13 @@ function onMessage(msg) {
             };
 
             const errors = ["001", "002", "003", "004"];
-            for (i=0; i<input.length; i++) {
-
-                var temp_msg = divideMsg(input[i]);
+            for (order=0; order<input.length; order++) {    
+                
+                var temp_msg = divideMsg(input[order]);
 
                 if (temp_msg != null) {
                     if (errors.includes(temp_msg)) {
-                        output["미확인"].push(input[i] + " -> " + temp_msg);
+                        output["미확인"].push(input[order] + " -> " + temp_msg);
 
                     } else {
                         
@@ -353,6 +354,7 @@ function onMessage(msg) {
                         }
                     }
                 }
+                // msg.reply(i + "   " + temp_msg);
             }
             bot.send(adminRoomName, JSON.stringify(output, null, 4));
 /*
@@ -394,6 +396,7 @@ function onMessage(msg) {
             
         }
         
+        // TEST
         if (msg.author.name == "김건우" && msg.content == "hi") {
             msg.reply("hi");
             msg.reply(getDateFull());
